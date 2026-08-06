@@ -46,6 +46,24 @@ AI 中台（诊断分析）→ 运营（二次校验）→ 商家（沟通话术
 
 **为什么不只用 Agent？** 批量周报入参完备、流程固定，用 Workflow 效率更高、更可控，不需要 Agent 的推理开销。
 
+### Workflow 节点链路
+
+```
+开始 → 代码 → 指标异常识别 → 根因诊断 → 生成复盘建议 → 校验节点 → 结束
+```
+
+| 节点 | 输入 | 输出 | 说明 |
+|------|------|------|------|
+| **开始** | `merchant_ids`, `period` | — | 商家 ID 列表 + 统计周期 |
+| **代码** | `merchant_ids`, `period` | `metrics` | 拉取团购指标（曝光、进店、核销、退款、差评、商圈对标） |
+| **指标异常识别** | `metrics` | `anomalies` | 识别偏离商圈均值或历史趋势的异常指标（模型：豆包·1.8·深度思考） |
+| **根因诊断** | `metrics`, `anomalies` | `diagnosis` | 四类根因归类：流量/转化/商品/服务品控（模型：豆包·1.8·深度思考） |
+| **生成复盘建议** | `diagnosis`, `metrics` | `report_draft` | 基于诊断结果生成结构化复盘报告（模型：豆包·1.8·深度思考） |
+| **校验节点** | `report_draft` | `final_report`, `compliance_flag` | 合规护栏：拦截越权建议（直接命令商家调价/下架），输出合规标记 |
+| **结束** | — | `final_report`, `compliance_flag` | 返回最终报告 + 合规状态 |
+
+![Workflow 画布](assets/workflow_canvas.png)
+
 ---
 
 ## 核心能力
