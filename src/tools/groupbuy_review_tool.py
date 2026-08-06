@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 import logging
 
 import requests
@@ -44,17 +45,39 @@ def _call_groupbuy_review_workflow(user_input: str, conversation_name: str = "De
         },
     }
 
-    logger.info("Calling groupbuy_review_agent workflow: %s, conversation: %s", WORKFLOW_ID, conversation_name)
-
-    response = requests.post(
-        f"{coze_api_base}/v1/workflow/run",
-        headers=headers,
-        json=payload,
-        timeout=300,
+    logger.info(
+        "Calling groupbuy_review_agent workflow: %s, conversation: %s, input_len: %d",
+        WORKFLOW_ID, conversation_name, len(user_input),
     )
 
-    result = response.json()
-    logger.info("Workflow response code: %s", result.get("code"))
+    start_time = time.time()
+    try:
+        response = requests.post(
+            f"{coze_api_base}/v1/workflow/run",
+            headers=headers,
+            json=payload,
+            timeout=300,
+        )
+    except requests.exceptions.RequestException as e:
+        elapsed = round(time.time() - start_time, 2)
+        logger.error("Workflow HTTP request failed after %ss: %s", elapsed, e)
+        return f"调用团购复盘助手网络请求失败（耗时{elapsed}s）: {str(e)}"
+
+    elapsed = round(time.time() - start_time, 2)
+    logger.info("Workflow HTTP response status: %s, elapsed: %ss", response.status_code, elapsed)
+
+    # 检查 HTTP 状态码
+    if response.status_code != 200:
+        logger.error("Workflow HTTP error: status=%s, body=%s", response.status_code, response.text[:500])
+        return f"调用团购复盘助手失败，HTTP状态码: {response.status_code}"
+
+    try:
+        result = response.json()
+    except ValueError as e:
+        logger.error("Workflow response JSON parse error: %s, body: %s", e, response.text[:500])
+        return f"调用团购复盘助手失败，响应解析错误: {str(e)}"
+
+    logger.info("Workflow response code: %s, msg: %s", result.get("code"), result.get("msg", ""))
 
     if result.get("code") != 0:
         error_msg = result.get("msg", "Unknown error")
