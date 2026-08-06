@@ -182,14 +182,14 @@ Workflow 测"单次输入到输出对不对"；Agent 多了对话维度（该不
 
 ## 技术栈
 
-| 组件 | 技术选型 |
-|------|---------|
-| 平台侧 | 扣子（Coze）Workflow + Botflow |
-| 本地 Agent | LangChain + LangGraph |
-| 大模型 | doubao-seed-2-0-lite-260215 |
-| 工具调用 | HTTP OpenAPI 调用扣子平台 Workflow |
-| 短期记忆 | 滑动窗口（保留最近 20 轮 / 40 条消息）+ Checkpointer |
-| 错误处理 | 中间件模式，工具异常不阻塞 Agent 循环 |
+| 组件 | 技术选型 | 选型理由 |
+|------|---------|---------|
+| **平台侧** | 扣子（Coze）Workflow + Botflow | 业务团队更熟悉，可视化编排更易沟通 |
+| **本地 Agent** | LangChain + LangGraph | 灵活的 Agent 编排框架，支持工具调用与多轮对话 |
+| **工具调用** | HTTP OpenAPI 调用扣子平台 Workflow | 统一接口，无需 SDK 依赖 |
+| **大模型** | doubao-seed-2-0-lite-260215 | 均衡型模型，兼顾效果与成本 |
+| **短期记忆** | 滑动窗口（保留最近 20 轮 / 40 条消息）+ Checkpointer | 防止上下文过长，保持对话连贯性 |
+| **错误处理** | 中间件模式，工具异常不阻塞 Agent 循环 | 提升鲁棒性，异常场景友好提示 |
 
 ---
 
