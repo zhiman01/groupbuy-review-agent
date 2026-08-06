@@ -62,7 +62,7 @@ AI 中台（诊断分析）→ 运营（二次校验）→ 商家（沟通话术
 | **校验节点** | `report_draft` | `final_report`, `compliance_flag` | 合规护栏：拦截越权建议（直接命令商家调价/下架），输出合规标记 |
 | **结束** | — | `final_report`, `compliance_flag` | 返回最终报告 + 合规状态 |
 
-![Workflow 画布](assets/workflow_canvas.png)
+![Workflow 画布](assets/groupbuy_review_workflow.png)
 
 ---
 
