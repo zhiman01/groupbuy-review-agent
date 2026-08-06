@@ -14,6 +14,12 @@
 
 ---
 
+## 输入场景（真实对话截图）
+
+![Agent 效果测试 - 输入场景](../assets/agent_test_input.png)
+
+---
+
 ## 输入数据
 
 ```json
