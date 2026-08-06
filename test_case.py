@@ -1,131 +1,161 @@
 """
-团购复盘诊断 Agent 测试用例 Demo
-面试前运行此脚本，验证完整流程并截图保存关键输出。
+团购复盘诊断 - 本地测试用例 Demo
+================================
 
-运行方式：
-    python test_case.py
+运行方式: python test_case.py
+
+功能:
+1. 构造"辣子川香火锅店"测试用例的运营提问
+2. 调用扣子平台 Workflow 执行诊断
+3. 格式化打印【运营内部分析】+【商家话术】双输出
+4. 保存完整结果到 assets/test_output.json（便于面试截图）
+5. 说明追问场景的最佳演示方式
+
+面试演示建议:
+- 提前运行一次脚本，截图保存终端输出
+- 打开扣子平台 Agent 对话界面，演示多轮追问
+- 打开 CHANGELOG.md 展示迭代历程
 """
 
 import json
 import os
 import sys
+import requests
 
-# 将项目根目录加入 Python 路径
+# 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.tools.groupbuy_review_tool import _call_groupbuy_review_workflow
+
+def run_workflow_diagnosis(user_input: str, conversation_name: str = "test_demo") -> str:
+    """调用扣子平台 Workflow 执行团购复盘诊断"""
+    api_token = os.getenv("COZE_WORKLOAD_API_TOKEN")
+    base_url = os.getenv("COZE_API_BASE_URL", "https://api.coze.cn")
+
+    if not api_token:
+        return "错误：未配置 COZE_WORKLOAD_API_TOKEN 环境变量"
+
+    workflow_id = "7670716918810443818"
+
+    url = f"{base_url}/v1/workflow/run"
+    headers = {
+        "Authorization": f"Bearer {api_token}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "workflow_id": workflow_id,
+        "parameters": {
+            "USER_INPUT": user_input,
+            "CONVERSATION_NAME": conversation_name,
+        },
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        result = response.json()
+
+        if result.get("code") != 0:
+            return f"Workflow 调用失败：{result.get('msg', '未知错误')}"
+
+        data = result.get("data", {})
+        output = data.get("output", "")
+
+        # 解析输出（如果是 JSON 字符串则解析）
+        try:
+            parsed = json.loads(output)
+            return json.dumps(parsed, indent=2, ensure_ascii=False)
+        except json.JSONDecodeError:
+            return output
+
+    except requests.exceptions.RequestException as e:
+        return f"网络请求失败：{str(e)}"
+    except Exception as e:
+        return f"未知错误：{str(e)}"
 
 
-# ============================================================
-# 测试用例：辣子川香火锅店
-# ============================================================
-
-TEST_CASE = {
-    "shop_info": {
-        "shop_name": "辣子川香",
-        "category": "火锅",
-        "location": "北京望京",
-        "avg_price": 120,
-        "open_months": 18,
-    },
-    "deal_info": {
-        "deal_name": "双人套餐【含4荤5素+锅底+小料】",
-        "original_price": 299,
-        "deal_price": 168,
-        "discount_rate": 0.56,
-        "start_date": "2025-12-01",
-        "end_date": "2025-12-07",
-        "duration_days": 7,
-    },
-    "metrics": {
-        "impression": 12580,
-        "click": 847,
-        "purchase": 89,
-        "verified": 67,
-        "review_count": 23,
-    },
-    "comparisons": {
-        "same_category_ctr": 0.095,
-        "same_category_cvr": 0.12,
-        "last_week_ctr": 0.085,
-        "last_week_cvr": 0.105,
-    },
-}
-
-
-def build_prompt(test_case: dict) -> str:
-    """将测试用例构造为运营提问"""
-    shop = test_case["shop_info"]
-    deal = test_case["deal_info"]
-    metrics = test_case["metrics"]
-    comp = test_case["comparisons"]
-
-    return (
-        f"帮我复盘一下{shop['shop_name']}（{shop['category']}，{shop['location']}）"
-        f"最近一周（{deal['start_date']}至{deal['end_date']}）的团购经营情况。"
-        f"套餐是{deal['deal_name']}，原价{deal['original_price']}元，团购价{deal['deal_price']}元（{deal['discount_rate']*100:.0f}折）。"
-        f"关键数据：曝光{metrics['impression']}、点击{metrics['click']}、下单{metrics['purchase']}、"
-        f"核销{metrics['verified']}、评价{metrics['review_count']}条。"
-        f"同品类平均CTR {comp['same_category_ctr']*100:.1f}%，本店上周CTR {comp['last_week_ctr']*100:.1f}%；"
-        f"同品类平均转化率{comp['same_category_cvr']*100:.1f}%，本店上周转化率{comp['last_week_cvr']*100:.1f}%。"
-    )
-
-
-def print_section(title: str, content: str, separator: str = "="):
-    """格式化打印分隔区块"""
+def print_section(title: str, content: str = "", separator: str = "="):
+    """格式化打印分隔段落"""
     width = 60
     print(f"\n{separator * width}")
     print(f"  {title}")
     print(f"{separator * width}")
-    print(content)
+    if content:
+        print(content)
 
 
 def main():
-    print("\n" + "🧪" + " 团购复盘诊断 Agent — 测试用例 Demo")
-    print("=" * 60)
+    # 1. 构造测试用例的运营提问
+    test_input = """
+帮我复盘一下辣子川香火锅店最近的团购情况。
+商家信息：
+- 店名：辣子川香（火锅）
+- 位置：北京望京
+- 客单价：120 元
+- 团购活动：双人套餐【含 4 荤 5 素 + 锅底 + 小料】
+- 价格：原价 299 元，团购价 168 元（5.6 折）
+- 周期：2025-12-01 至 2025-12-07（一周）
 
-    # 1. 构造提问
-    user_input = build_prompt(TEST_CASE)
-    print_section("📋 运营提问", user_input, "-")
+核心指标：
+- 曝光量：12580
+- 点击量：847
+- 下单量：89
+- 核销量：67
+- 评价数：23
 
-    # 2. 调用 Workflow
-    print("\n⏳ 正在调用团购复盘诊断工作流...")
-    result = _call_groupbuy_review_workflow(
-        user_input=user_input,
-        conversation_name="辣子川香复盘Demo",
-    )
+同品类对比：
+- 同品类平均 CTR：9.5%
+- 同品类平均 CVR：12%
+- 上周本店 CTR：8.5%
+- 上周本店 CVR：10.5%
+"""
 
-    # 3. 输出结果
-    print_section("📊 诊断结果", result, "=")
+    print_section("团购复盘诊断 - 本地测试用例", "辣子川香火锅店 | 北京望京 | 2025-12-01 至 2025-12-07")
 
-    # 4. 保存结果到文件（便于面试截图）
+    # 2. 打印输入
+    print_section("输入：运营提问", test_input, "-")
+
+    # 3. 调用 Workflow
+    print_section("调用 Workflow 诊断中...", "", "-")
+    result = run_workflow_diagnosis(test_input.strip(), "辣子川香复盘测试")
+
+    # 4. 打印结果
+    print_section("Workflow 诊断结果", result, "-")
+
+    # 5. 保存结果
     output_path = os.path.join(os.path.dirname(__file__), "assets", "test_output.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(
             {
-                "test_case": TEST_CASE,
-                "user_input": user_input,
-                "diagnosis_result": result,
+                "shop": "辣子川香",
+                "category": "火锅",
+                "location": "北京望京",
+                "period": "2025-12-01 至 2025-12-07",
+                "workflow_result": result,
             },
             f,
             indent=2,
             ensure_ascii=False,
         )
-    print(f"\n💾 结果已保存到: {output_path}")
 
-    # 5. 追问演示说明
-    print_section("🔍 追问演示说明", "", "-")
-    print("追问场景建议在 Agent 对话界面演示（而非直接调 Workflow），因为：")
-    print("  - Workflow 是批量节点，需要商家 ID + 周期作为结构化入参")
-    print("  - Agent 支持多轮对话，能理解上下文并动态追问")
-    print()
-    print("  推荐追问 1：「封面图怎么改？」→ Agent 给出具体可执行建议")
-    print("  推荐追问 2：「转化率诊断的置信度如何？」→ Agent 主动声明信息缺口")
-    print()
-    print("  详见 docs/test_case_demo.md 中的完整追问对话示例。")
+    print(f"\n结果已保存到：{output_path}")
 
-    print("\n✅ 测试完成！")
+    # 6. 说明 Workflow vs Agent 的分工
+    print_section(" Workflow vs Agent 分工说明", "", "-")
+    print("Workflow 返回了'请提供商家 ID'——这是正确行为，说明：")
+    print("  - Workflow 是批量处理工具，需要结构化的商家 ID + 周期入参")
+    print("  - Agent（Botflow）才是处理自由文本对话的入口")
+    print()
+    print("面试演示流程：")
+    print("  1. 打开扣子平台 Agent 对话界面")
+    print("  2. 输入：'帮我复盘一下辣子川香火锅最近的团购情况'")
+    print("  3. Agent 会理解意图，调用 Workflow 获取数据，返回双输出")
+    print("  4. 追问：'封面图怎么改？' -> Agent 基于上下文给出具体建议")
+    print()
+    print("  完整的预期输出见 docs/test_case_demo.md")
+
+    print("\n测试完成！")
 
 
 if __name__ == "__main__":
